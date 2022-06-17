@@ -3,6 +3,8 @@ from django.db import models
 from PIL import Image
 import os
 from django.conf import settings
+from django.utils.text import slugify
+from utils import utils
 
 
 class Produto(models.Model):
@@ -11,17 +13,26 @@ class Produto(models.Model):
     descricao_longa = models.TextField()
     imagem = models.ImageField(
         upload_to='produto_imagens/%Y/%m/', blank=True, null=True)
-    slug = models.SlugField(unique=True)
-    preco_marketing = models.FloatField()
-    preco_marketing_promocional = models.FloatField(default=0)
+    slug = models.SlugField(unique=True, blank=True, null=True)
+    preco_marketing = models.FloatField(verbose_name='Preço')
+    preco_marketing_promocional = models.FloatField(
+        default=0, verbose_name='Preço Promo')
     tipo = models.CharField(
         default='V',
         max_length=1,
         choices=(
-            ('V', 'Variação'),
+            ('V', 'Variável'),
             ('S', 'Simples')
         )
     )
+
+    def get_preco_formatado(self):
+        return utils.formata_preco(self.preco_marketing)
+    get_preco_formatado.short_description = 'Preço'
+
+    def get_preco_promocional_formatado(self):
+        return utils.formata_preco(self.preco_marketing_promocional)
+    get_preco_promocional_formatado.short_description = 'Preço Promo'
 
     @staticmethod
     def resize_image(img, new_width=800):
@@ -42,6 +53,10 @@ class Produto(models.Model):
         )
 
     def save(self, *args, **kwargs):
+        if not self.slug:
+            slug = f'{slugify(self.nome)}'
+            self.slug = slug
+
         super().save(*args, **kwargs)
 
         max_image_size = 800
